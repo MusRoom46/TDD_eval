@@ -3,6 +3,8 @@ package fr.formation.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import fr.formation.model.Adherent;
+import fr.formation.repository.AdherentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +28,7 @@ public class AdherentServiceTest {
 
     @BeforeEach
     void setUp() {
-        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", "M");
+        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24");
     }
 
     @Test
@@ -39,14 +41,14 @@ public class AdherentServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals("Doe", result.getNom());
+        assertEquals("Bedet", result.getNom());
     }
 
     @Test
     void testModifierAdherent() {
         // Given
         when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        Adherent adherentModifie = new Adherent("A123", "Smith", "John", "1990-05-15", "M");
+        Adherent adherentModifie = new Adherent("A123", "Aubert", "Benjamin", "2003-02-02");
         when(adherentRepository.save(any(Adherent.class))).thenReturn(adherentModifie);
 
         // When
@@ -54,7 +56,7 @@ public class AdherentServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals("Smith", result.getNom());
+        assertEquals("Aubert", result.getNom());
     }
 
     @Test
@@ -80,16 +82,16 @@ public class AdherentServiceTest {
 
         // Then
         assertTrue(result.isPresent());
-        assertEquals("Doe", result.get().getNom());
+        assertEquals("Bedet", result.get().getNom());
     }
 
     @Test
     void testRechercherParNom() {
         // Given
-        when(adherentRepository.findByNomContainingIgnoreCase("Doe")).thenReturn(List.of(adherent));
+        when(adherentRepository.findByNomContainingIgnoreCase("Bedet")).thenReturn(List.of(adherent));
 
         // When
-        List<Adherent> result = adherentService.rechercherParNom("Doe");
+        List<Adherent> result = adherentService.rechercherParNom("Bedet");
 
         // Then
         assertFalse(result.isEmpty());
