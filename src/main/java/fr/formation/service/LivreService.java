@@ -44,4 +44,8 @@ public class LivreService {
     public List<Livre> rechercherParTitre(String titre) {
         return livreRepository.findByTitreContainingIgnoreCase(titre);
     }
+
+    public List<Livre> rechercherParAuteur(String auteur) {
+        return livreRepository.findByAuteurContainingIgnoreCase(auteur);
+    }
 }

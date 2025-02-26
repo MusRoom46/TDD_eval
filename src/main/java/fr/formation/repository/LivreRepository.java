@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface LivreRepository extends JpaRepository<Livre, String> {
     List<Livre> findByTitreContainingIgnoreCase(String titre);
+
+    List<Livre> findByAuteurContainingIgnoreCase(String auteur);
 }

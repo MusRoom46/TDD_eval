@@ -65,7 +65,7 @@ public class LivreServiceTest {
         when(livreRepository.findById(livre.getIsbn())).thenReturn(Optional.of(livre));
 
         // When
-        Optional<Livre> result = livreService.rechercherParIsbn(livre.getIsbn());
+        Optional<Livre> result = Optional.ofNullable(livreService.rechercherParISBN(livre.getIsbn()));
 
         // Then
         assertTrue(result.isPresent());
@@ -75,10 +75,10 @@ public class LivreServiceTest {
     @Test
     void testRechercherParTitre() {
         // Given
-        when(livreRepository.findByTitreContainingIgnoreCase("TDD")).thenReturn(List.of(livre));
+        when(livreRepository.findByTitreContainingIgnoreCase("Livre")).thenReturn(List.of(livre));
 
         // When
-        List<Livre> result = livreService.rechercherParTitre("TDD");
+        List<Livre> result = livreService.rechercherParTitre("Livre");
 
         // Then
         assertFalse(result.isEmpty());
@@ -88,10 +88,10 @@ public class LivreServiceTest {
     @Test
     void testRechercherParAuteur() {
         // Given
-        when(livreRepository.findByAuteurContainingIgnoreCase("Kent")).thenReturn(List.of(livre));
+        when(livreRepository.findByAuteurContainingIgnoreCase("Valentin")).thenReturn(List.of(livre));
 
         // When
-        List<Livre> result = livreService.rechercherParAuteur("Kent");
+        List<Livre> result = livreService.rechercherParAuteur("Valentin");
 
         // Then
         assertFalse(result.isEmpty());
