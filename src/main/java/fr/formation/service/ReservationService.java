@@ -7,11 +7,8 @@ import fr.formation.repository.AdherentRepository;
 import fr.formation.repository.LivreRepository;
 import fr.formation.repository.ReservationRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -34,87 +31,79 @@ public class ReservationService {
     @Autowired
     private MailService mailService;
 
-    private static final Logger logger = LoggerFactory.getLogger(ReservationService.class);
-
-    public Reservation ajouterReservation(String codeAdherent, String isbn) {
-        // Vérifier que l'adhérent existe
+    public Reservation ajouterReservation(String codeAdherent, String isbn, LocalDate dateFin) {
         Adherent adherent = adherentRepository.findById(codeAdherent)
                 .orElseThrow(() -> new EntityNotFoundException("Adhérent non trouvé"));
-
-        // Vérifier que le livre existe
         Livre livre = livreRepository.findById(isbn)
                 .orElseThrow(() -> new EntityNotFoundException("Livre non trouvé"));
 
-        // Vérifier si le livre est disponible
         if (!livre.isDisponible()) {
             throw new IllegalStateException("Le livre n'est pas disponible");
         }
 
-        // Vérifier que l'adhérent n'a pas plus de 3 réservations en cours
         int reservationsActives = reservationRepository.countByAdherentAndDateFinIsNull(adherent);
         if (reservationsActives >= 3) {
             throw new IllegalStateException("L'adhérent a atteint le nombre maximal de réservations");
         }
 
-        // Créer et enregistrer la réservation
-        Reservation reservation = new Reservation(null, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
+        // Vérification que la date de fin est dans les 4 mois suivant la date de début
+        if (dateFin.isAfter(LocalDate.now().plusMonths(4))) {
+            throw new IllegalArgumentException("La date de fin ne peut pas être supérieure à 4 mois après la date de début");
+        }
+
+        // Créer la réservation avec la date de fin renseignée par l'appelant
+        Reservation reservation = new Reservation(null, adherent, livre, LocalDate.now(), dateFin);
         return reservationRepository.save(reservation);
     }
 
+
+    @Transactional
     public void annulerReservation(Long reservationId) {
-        // Vérifier si la réservation existe
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new EntityNotFoundException("Réservation non trouvée"));
 
-        // Vérifier si la réservation est encore active
+        // Si la réservation est déjà terminée, on ne peut pas l'annuler
         if (reservation.getDateFin().isBefore(LocalDate.now())) {
             throw new IllegalStateException("Impossible d'annuler une réservation déjà terminée");
         }
 
-        // Rendre le livre à nouveau disponible
+        // Remet le livre en disponibilité
         Livre livre = reservation.getLivre();
         livre.setDisponible(true);
         livreRepository.save(livre);
 
-        // Supprimer la réservation
+        // Supprime la réservation
         reservationRepository.delete(reservation);
     }
 
-    public List<Reservation> getReservationsActives() {
+    public List<Reservation> recupererReservationsActives() {
         return reservationRepository.findByDateFinAfter(LocalDate.now());
     }
 
-    public List<Reservation> getReservationsActivesParAdherent(String codeAdherent) {
-        // Vérifier si l'adhérent existe
+    public List<Reservation> recupererReservationsActivesParAdherent(String codeAdherent) {
         Adherent adherent = adherentRepository.findById(codeAdherent)
                 .orElseThrow(() -> new EntityNotFoundException("Adhérent non trouvé"));
-
         return reservationRepository.findByAdherentAndDateFinAfter(adherent, LocalDate.now());
     }
 
-    public List<Reservation> getHistoriqueReservationsAdherent(String codeAdherent) {
-        // Vérifier que l'adhérent existe
+    public List<Reservation> recupererHistoriqueReservationsAdherent(String codeAdherent) {
         Adherent adherent = adherentRepository.findById(codeAdherent)
                 .orElseThrow(() -> new EntityNotFoundException("Adhérent non trouvé"));
-
-        // Retourner toutes ses réservations (passées et en cours)
         return reservationRepository.findByAdherent(adherent);
     }
-
     public void envoyerRappelReservationsDepassees() {
-        // Récupérer les réservations dépassées
         List<Reservation> reservationsDepassees = reservationRepository.findByDateFinBefore(LocalDate.now());
 
-        // Regrouper les réservations par adhérent
+        // Regroupe les réservations par adhérent
         Map<Adherent, List<Reservation>> reservationsParAdherent = reservationsDepassees.stream()
                 .collect(Collectors.groupingBy(Reservation::getAdherent));
 
-        // Envoyer un e-mail pour chaque adhérent
+        // Pour chaque adhérent, on envoie un seul mail
         for (Map.Entry<Adherent, List<Reservation>> entry : reservationsParAdherent.entrySet()) {
             Adherent adherent = entry.getKey();
             List<Reservation> reservations = entry.getValue();
 
-            // Construire le message
+            // Crée le message du mail
             StringBuilder message = new StringBuilder();
             message.append("Cher(e) ").append(adherent.getPrenom()).append(",\n\n");
             message.append("Vous avez des réservations en retard :\n");
@@ -127,23 +116,15 @@ public class ReservationService {
             message.append("\nMerci de les retourner au plus vite.\n\n");
             message.append("Cordialement,\nBibliothèque");
 
-            // Simuler l’envoi de l’e-mail
             mailService.envoyerMail(adherent.getAdresseMail(), "Rappel de vos réservations dépassées", message.toString());
         }
     }
 
-    @Transactional
-    @Scheduled(cron = "0 0 2 * * *") // Exécution tous les jours à 2h du matin
     public void supprimerReservationsExpirees() {
         List<Reservation> reservationsExpirees = reservationRepository.findByDateFinBefore(LocalDate.now());
 
         for (Reservation reservation : reservationsExpirees) {
-            logger.info("Suppression de la réservation expirée : {}", reservation);
             reservationRepository.delete(reservation);
-        }
-
-        if (reservationsExpirees.isEmpty()) {
-            logger.info("Aucune réservation expirée à supprimer.");
         }
     }
 }

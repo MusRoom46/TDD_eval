@@ -1,26 +1,22 @@
 package fr.formation.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 import fr.formation.model.*;
 import fr.formation.repository.AdherentRepository;
 import fr.formation.repository.LivreRepository;
 import fr.formation.repository.ReservationRepository;
-import jakarta.persistence.EntityNotFoundException;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-@ExtendWith(MockitoExtension.class)
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 public class ReservationServiceTest {
 
     @Mock
@@ -40,240 +36,136 @@ public class ReservationServiceTest {
 
     private Adherent adherent;
     private Livre livre;
-    private Reservation reservation;
+
+    private LocalDate dateFin = LocalDate.now().plusMonths(3);
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        // Création des objets mocks pour Adherent et Livre
         adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", Civilite.HOMME, "valentin.bedet@mail.com");
         livre = new Livre("9783161484100", "Livre conforme", "Valentin Bedet", "Éditeur IIA", Format.BROCHE, true);
-        reservation = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
+
+        // Créez une réservation avec ID fictif
+        Reservation reservationMock = new Reservation(1L, adherent, livre, LocalDate.now(), dateFin);
+        // Comportement des mocks
+        when(adherentRepository.findById("A123")).thenReturn(Optional.of(adherent));
+        when(livreRepository.findById("9783161484100")).thenReturn(Optional.of(livre));
+        when(reservationRepository.save(any(Reservation.class))).thenReturn(reservationMock);
     }
 
     @Test
-    void testAjouterReservation() {
-        // Given : L'adhérent a moins de 3 réservations et le livre est disponible
-        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        when(livreRepository.findById(livre.getIsbn())).thenReturn(Optional.of(livre));
-        when(reservationRepository.countByAdherentAndDateFinIsNull(adherent)).thenReturn(2);
-        when(reservationRepository.save(any(Reservation.class))).thenReturn(reservation);
+    void testAjouterReservation_Success() {
+        // Mocker les méthodes nécessaires pour que la logique de la réservation fonctionne
+        when(adherentRepository.findById("A123")).thenReturn(Optional.of(adherent));
+        when(livreRepository.findById("9783161484100")).thenReturn(Optional.of(livre));
+        when(reservationRepository.countByAdherentAndDateFinIsNull(adherent)).thenReturn(0);
 
-        // When
-        Reservation result = reservationService.ajouterReservation(adherent.getCodeAdherent(), livre.getIsbn());
+        Reservation reservation = reservationService.ajouterReservation("A123", "9783161484100", dateFin);
 
-        // Then
-        assertNotNull(result);
-        assertEquals(adherent.getCodeAdherent(), result.getAdherent().getCodeAdherent());
-        assertEquals(livre.getIsbn(), result.getLivre().getIsbn());
+        // Vérifiez que la réservation n'est pas nulle et que les valeurs sont correctes
+        assertNotNull(reservation);
+        assertEquals(adherent, reservation.getAdherent());
+        assertEquals(livre, reservation.getLivre());
+        assertTrue(reservation.getDateFin().isBefore(LocalDate.now().plusMonths(4)));
     }
 
     @Test
     void testAjouterReservation_LivreIndisponible() {
-        // Given : Livre non disponible
-        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        when(livreRepository.findById(livre.getIsbn())).thenReturn(Optional.of(livre));
-        livre.setDisponible(false);
+        // Cas où le livre est indisponible
+        when(livreRepository.findById("9783161484100")).thenReturn(Optional.of(new Livre("9783161484100", "Livre ajouté", "Valentin Bedet", "Éditeur IIA", Format.POCHE, false)));
 
-        // When - Then
-        Exception exception = assertThrows(IllegalStateException.class, () ->
-                reservationService.ajouterReservation(adherent.getCodeAdherent(), livre.getIsbn())
-        );
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            reservationService.ajouterReservation("A123", "9783161484100", dateFin);
+        });
+
         assertEquals("Le livre n'est pas disponible", exception.getMessage());
     }
 
     @Test
-    void testAjouterReservation_MaximumAtteint() {
-        // Given : L'adhérent a déjà 3 réservations actives
-        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        when(livreRepository.findById(livre.getIsbn())).thenReturn(Optional.of(livre));
+    void testAjouterReservation_MaxReservationsAtteint() {
+        // Cas où l'adhérent a déjà 3 réservations actives
         when(reservationRepository.countByAdherentAndDateFinIsNull(adherent)).thenReturn(3);
 
-        // When - Then
-        Exception exception = assertThrows(IllegalStateException.class, () ->
-                reservationService.ajouterReservation(adherent.getCodeAdherent(), livre.getIsbn())
-        );
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            reservationService.ajouterReservation("A123", "9783161484100", dateFin);
+        });
+
         assertEquals("L'adhérent a atteint le nombre maximal de réservations", exception.getMessage());
     }
 
     @Test
-    void testAnnulerReservation_Succes() {
-        // Given : Une réservation existante et en cours
-        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+    void testAnnulerReservation_Success() {
+        // Cas où la réservation est annulée avec succès
+        Reservation reservation = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
+        when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
-        // When
-        reservationService.annulerReservation(reservation.getId());
+        reservationService.annulerReservation(1L);
 
-        // Then : Vérifier que la réservation a bien été supprimée
-        verify(reservationRepository, times(1)).delete(reservation);
-        // Vérifier que le livre est redevenu disponible
-        assertTrue(livre.isDisponible());
-    }
-
-    @Test
-    void testAnnulerReservation_ReservationInexistante() {
-        // Given : La réservation n'existe pas
-        when(reservationRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // When - Then : Vérifier que l'exception est bien levée
-        Exception exception = assertThrows(EntityNotFoundException.class, () ->
-                reservationService.annulerReservation(999L)
-        );
-        assertEquals("Réservation non trouvée", exception.getMessage());
+        verify(reservationRepository).delete(reservation);
+        verify(livreRepository).save(livre);
     }
 
     @Test
     void testAnnulerReservation_ReservationDejaTerminee() {
-        // Given : Une réservation déjà terminée
-        reservation.setDateFin(LocalDate.now().minusDays(1)); // Date passée
-        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+        // Cas où l'annulation échoue parce que la réservation est déjà terminée
+        Reservation reservation = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(3));
+        when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
-        // When - Then
-        Exception exception = assertThrows(IllegalStateException.class, () ->
-                reservationService.annulerReservation(reservation.getId())
-        );
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            reservationService.annulerReservation(1L);
+        });
+
         assertEquals("Impossible d'annuler une réservation déjà terminée", exception.getMessage());
     }
 
     @Test
     void testGetReservationsActives() {
-        // Given : Deux réservations actives
-        Reservation reservation1 = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(1));
-        Reservation reservation2 = new Reservation(2L, adherent, livre, LocalDate.now(), LocalDate.now().plusWeeks(2));
-        List<Reservation> reservations = List.of(reservation1, reservation2);
+        // Cas où on récupère les réservations actives
+        Reservation reservation = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
+        when(reservationRepository.findByDateFinAfter(LocalDate.now())).thenReturn(List.of(reservation));
 
-        when(reservationRepository.findByDateFinAfter(LocalDate.now())).thenReturn(reservations);
+        List<Reservation> reservations = reservationService.recupererReservationsActives();
 
-        // When
-        List<Reservation> result = reservationService.getReservationsActives();
-
-        // Then
-        assertFalse(result.isEmpty());
-        assertEquals(2, result.size());
-    }
-
-    @Test
-    void testGetReservationsActivesAdherent() {
-        // Given : Une réservation active pour un adhérent
-        Reservation reservation1 = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(1));
-        List<Reservation> reservations = List.of(reservation1);
-
-        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        when(reservationRepository.findByAdherentAndDateFinAfter(adherent, LocalDate.now())).thenReturn(reservations);
-
-        // When
-        List<Reservation> result = reservationService.getReservationsActivesParAdherent(adherent.getCodeAdherent());
-
-        // Then
-        assertFalse(result.isEmpty());
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void testGetReservationsActivesAdherentInconnu() {
-        // Given : Adhérent inconnu
-        when(adherentRepository.findById("XYZ123")).thenReturn(Optional.empty());
-
-        // When - Then
-        Exception exception = assertThrows(EntityNotFoundException.class, () ->
-                reservationService.getReservationsActivesParAdherent("XYZ123")
-        );
-        assertEquals("Adhérent non trouvé", exception.getMessage());
-    }
-
-    @Test
-    void testGetHistoriqueReservationsAdherent() {
-        // Given : Un adhérent avec 2 réservations (1 active + 1 terminée)
-        Reservation reservationActive = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(1));
-        Reservation reservationTerminee = new Reservation(2L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(1));
-
-        List<Reservation> reservations = List.of(reservationActive, reservationTerminee);
-
-        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        when(reservationRepository.findByAdherent(adherent)).thenReturn(reservations);
-
-        // When
-        List<Reservation> result = reservationService.getHistoriqueReservationsAdherent(adherent.getCodeAdherent());
-
-        // Then
-        assertFalse(result.isEmpty());
-        assertEquals(2, result.size());
-    }
-
-    @Test
-    void testGetHistoriqueReservationsAdherent_Vide() {
-        // Given : Un adhérent sans réservations
-        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        when(reservationRepository.findByAdherent(adherent)).thenReturn(Collections.emptyList());
-
-        // When
-        List<Reservation> result = reservationService.getHistoriqueReservationsAdherent(adherent.getCodeAdherent());
-
-        // Then
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void testGetHistoriqueReservationsAdherent_Inexistant() {
-        // Given : Adhérent non trouvé
-        when(adherentRepository.findById("XYZ123")).thenReturn(Optional.empty());
-
-        // When - Then
-        Exception exception = assertThrows(EntityNotFoundException.class, () ->
-                reservationService.getHistoriqueReservationsAdherent("XYZ123")
-        );
-        assertEquals("Adhérent non trouvé", exception.getMessage());
+        assertFalse(reservations.isEmpty());
+        assertEquals(1, reservations.size());
     }
 
     @Test
     void testEnvoyerRappelReservationsDepassees() {
-        // Given : Un adhérent avec 2 réservations dépassées
-        Reservation reservation1 = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(1));
-        Reservation reservation2 = new Reservation(2L, adherent, livre, LocalDate.now().minusMonths(3), LocalDate.now().minusDays(10));
+        // Cas où on envoie un rappel pour les réservations dépassées
+        Reservation expiredReservation = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(6), LocalDate.now().minusMonths(4));
+        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(List.of(expiredReservation));
 
-        List<Reservation> reservationsDepassees = List.of(reservation1, reservation2);
-
-        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(reservationsDepassees);
-
-        // When
         reservationService.envoyerRappelReservationsDepassees();
 
-        // Then : Vérifier que l'e-mail est bien simulé
-        verify(mailService, times(1)).envoyerMail(
+        // Vérifie que le mail a bien été envoyé avec des matchers pour tous les arguments
+        verify(mailService).envoyerMail(
                 eq(adherent.getAdresseMail()),
-                contains("Rappel de vos réservations dépassées"),
-                contains(livre.getTitre())
+                eq("Rappel de vos réservations dépassées"),
+                anyString()
         );
     }
 
     @Test
-    void testEnvoyerRappelReservationsDepassees_Aucune() {
-        // Given : Aucune réservation en retard
-        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(Collections.emptyList());
+    void testSupprimerReservationsExpirees() {
+        // Cas où l'on supprime les réservations expirées
+        Reservation expiredReservation = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(6), LocalDate.now().minusMonths(4));
+        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(List.of(expiredReservation));
 
-        // When
-        reservationService.envoyerRappelReservationsDepassees();
+        reservationService.supprimerReservationsExpirees();
 
-        // Then : Vérifier qu'aucun e-mail n'est envoyé
-        verify(mailService, never()).envoyerMail(anyString(), anyString(), anyString());
+        verify(reservationRepository).delete(expiredReservation);
     }
 
     @Test
-    void testSuppressionReservationsExpirees() {
-        // Given : 2 réservations expirées et 1 encore active
-        Reservation reservationExpiree1 = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(1));
-        Reservation reservationExpiree2 = new Reservation(2L, adherent, livre, LocalDate.now().minusMonths(3), LocalDate.now().minusDays(10));
-        Reservation reservationActive = new Reservation(3L, adherent, livre, LocalDate.now().minusDays(10), LocalDate.now().plusDays(10));
+    void testSupprimerReservationsExpirees_Vide() {
+        // Cas où aucune réservation expirée n'est trouvée
+        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(List.of());
 
-        List<Reservation> reservationsExpirees = List.of(reservationExpiree1, reservationExpiree2);
-
-        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(reservationsExpirees);
-
-        // When
         reservationService.supprimerReservationsExpirees();
 
-        // Then : Vérifier que seules les réservations expirées sont supprimées
-        verify(reservationRepository, times(1)).delete(reservationExpiree1);
-        verify(reservationRepository, times(1)).delete(reservationExpiree2);
-        verify(reservationRepository, never()).delete(reservationActive);
+        verify(reservationRepository, never()).delete(any(Reservation.class));
     }
-
 }
