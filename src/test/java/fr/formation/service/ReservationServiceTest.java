@@ -131,4 +131,50 @@ public class ReservationServiceTest {
         );
         assertEquals("Impossible d'annuler une réservation déjà terminée", exception.getMessage());
     }
+
+    @Test
+    void testGetReservationsActives() {
+        // Given : Deux réservations actives
+        Reservation reservation1 = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(1));
+        Reservation reservation2 = new Reservation(2L, adherent, livre, LocalDate.now(), LocalDate.now().plusWeeks(2));
+        List<Reservation> reservations = List.of(reservation1, reservation2);
+
+        when(reservationRepository.findByDateFinAfter(LocalDate.now())).thenReturn(reservations);
+
+        // When
+        List<Reservation> result = reservationService.getReservationsActives();
+
+        // Then
+        assertFalse(result.isEmpty());
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void testGetReservationsActivesAdherent() {
+        // Given : Une réservation active pour un adhérent
+        Reservation reservation1 = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(1));
+        List<Reservation> reservations = List.of(reservation1);
+
+        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
+        when(reservationRepository.findByAdherentAndDateFinAfter(adherent, LocalDate.now())).thenReturn(reservations);
+
+        // When
+        List<Reservation> result = reservationService.getReservationsActivesParAdherent(adherent.getCodeAdherent());
+
+        // Then
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testGetReservationsActivesAdherentInconnu() {
+        // Given : Adhérent inconnu
+        when(adherentRepository.findById("XYZ123")).thenReturn(Optional.empty());
+
+        // When - Then
+        Exception exception = assertThrows(EntityNotFoundException.class, () ->
+                reservationService.getReservationsActivesParAdherent("XYZ123")
+        );
+        assertEquals("Adhérent non trouvé", exception.getMessage());
+    }
 }
