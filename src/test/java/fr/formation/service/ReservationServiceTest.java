@@ -259,4 +259,24 @@ public class ReservationServiceTest {
         verify(mailService, never()).envoyerMail(anyString(), anyString(), anyString());
     }
 
+    @Test
+    void testSuppressionReservationsExpirees() {
+        // Given : 2 réservations expirées et 1 encore active
+        Reservation reservationExpiree1 = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(1));
+        Reservation reservationExpiree2 = new Reservation(2L, adherent, livre, LocalDate.now().minusMonths(3), LocalDate.now().minusDays(10));
+        Reservation reservationActive = new Reservation(3L, adherent, livre, LocalDate.now().minusDays(10), LocalDate.now().plusDays(10));
+
+        List<Reservation> reservationsExpirees = List.of(reservationExpiree1, reservationExpiree2);
+
+        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(reservationsExpirees);
+
+        // When
+        reservationService.supprimerReservationsExpirees();
+
+        // Then : Vérifier que seules les réservations expirées sont supprimées
+        verify(reservationRepository, times(1)).delete(reservationExpiree1);
+        verify(reservationRepository, times(1)).delete(reservationExpiree2);
+        verify(reservationRepository, never()).delete(reservationActive);
+    }
+
 }
