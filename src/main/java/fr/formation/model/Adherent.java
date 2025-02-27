@@ -21,4 +21,7 @@ public class Adherent {
     @Column(nullable = false)
     private String dateNaissance;
 
+    @Column(nullable = false)
+    private String adresseMail;
+
 }

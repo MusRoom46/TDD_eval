@@ -44,7 +44,7 @@ public class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24");
+        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", "valentin.bedet@mail.com");
         livre = new Livre("9783161484100", "Livre conforme", "Valentin Bedet", "Éditeur IIA", Format.BROCHE, true);
         reservation = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
     }
@@ -222,4 +222,38 @@ public class ReservationServiceTest {
         );
         assertEquals("Adhérent non trouvé", exception.getMessage());
     }
+
+    @Test
+    void testEnvoyerRappelReservationsDepassees() {
+        // Given : Un adhérent avec 2 réservations dépassées
+        Reservation reservation1 = new Reservation(1L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(1));
+        Reservation reservation2 = new Reservation(2L, adherent, livre, LocalDate.now().minusMonths(3), LocalDate.now().minusDays(10));
+
+        List<Reservation> reservationsDepassees = List.of(reservation1, reservation2);
+
+        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(reservationsDepassees);
+
+        // When
+        reservationService.envoyerRappelReservationsDepassees();
+
+        // Then : Vérifier que l'e-mail est bien simulé
+        verify(mailService, times(1)).envoyerMail(
+                eq(adherent.getEmail()),
+                contains("Rappel de vos réservations dépassées"),
+                contains(livre.getTitre())
+        );
+    }
+
+    @Test
+    void testEnvoyerRappelReservationsDepassees_Aucune() {
+        // Given : Aucune réservation en retard
+        when(reservationRepository.findByDateFinBefore(LocalDate.now())).thenReturn(Collections.emptyList());
+
+        // When
+        reservationService.envoyerRappelReservationsDepassees();
+
+        // Then : Vérifier qu'aucun e-mail n'est envoyé
+        verify(mailService, never()).envoyerMail(anyString(), anyString(), anyString());
+    }
+
 }

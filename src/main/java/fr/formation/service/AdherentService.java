@@ -24,6 +24,7 @@ public class AdherentService {
         adherent.setNom(adherentModifie.getNom());
         adherent.setPrenom(adherentModifie.getPrenom());
         adherent.setDateNaissance(adherentModifie.getDateNaissance());
+        adherent.setAdresseMail(adherentModifie.getAdresseMail());
         return adherentRepository.save(adherent);
     }
 

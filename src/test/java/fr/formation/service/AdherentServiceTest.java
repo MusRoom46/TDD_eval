@@ -28,7 +28,7 @@ public class AdherentServiceTest {
 
     @BeforeEach
     void setUp() {
-        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24");
+        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", "valentin.bedet@mail.com");
     }
 
     @Test
@@ -48,7 +48,7 @@ public class AdherentServiceTest {
     void testModifierAdherent() {
         // Given
         when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        Adherent adherentModifie = new Adherent("A123", "Aubert", "Benjamin", "2003-02-02");
+        Adherent adherentModifie = new Adherent("A123", "Aubert", "Benjamin","2003-02-02", "benjamin.aubert@mail.com");
         when(adherentRepository.save(any(Adherent.class))).thenReturn(adherentModifie);
 
         // When
