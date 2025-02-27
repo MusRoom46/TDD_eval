@@ -21,6 +21,10 @@ public class Adherent {
     @Column(nullable = false)
     private String dateNaissance;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Civilite civilite;
+
     @Column(nullable = false)
     private String adresseMail;
 

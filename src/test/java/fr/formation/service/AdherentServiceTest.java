@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import fr.formation.model.Adherent;
+import fr.formation.model.Civilite;
 import fr.formation.repository.AdherentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,7 @@ public class AdherentServiceTest {
 
     @BeforeEach
     void setUp() {
-        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", "valentin.bedet@mail.com");
+        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", Civilite.HOMME, "valentin.bedet@mail.com");
     }
 
     @Test
@@ -48,7 +49,7 @@ public class AdherentServiceTest {
     void testModifierAdherent() {
         // Given
         when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
-        Adherent adherentModifie = new Adherent("A123", "Aubert", "Benjamin","2003-02-02", "benjamin.aubert@mail.com");
+        Adherent adherentModifie = new Adherent("A123", "Aubert", "Benjamin","2003-02-02", Civilite.HOMME, "benjamin.aubert@mail.com");
         when(adherentRepository.save(any(Adherent.class))).thenReturn(adherentModifie);
 
         // When

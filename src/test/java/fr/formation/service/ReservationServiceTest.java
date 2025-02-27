@@ -3,10 +3,7 @@ package fr.formation.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import fr.formation.model.Adherent;
-import fr.formation.model.Format;
-import fr.formation.model.Livre;
-import fr.formation.model.Reservation;
+import fr.formation.model.*;
 import fr.formation.repository.AdherentRepository;
 import fr.formation.repository.LivreRepository;
 import fr.formation.repository.ReservationRepository;
@@ -47,7 +44,7 @@ public class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", "valentin.bedet@mail.com");
+        adherent = new Adherent("A123", "Bedet", "Valentin", "2003-10-24", Civilite.HOMME, "valentin.bedet@mail.com");
         livre = new Livre("9783161484100", "Livre conforme", "Valentin Bedet", "Éditeur IIA", Format.BROCHE, true);
         reservation = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
     }
