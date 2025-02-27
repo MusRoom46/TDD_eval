@@ -7,8 +7,13 @@ import fr.formation.repository.AdherentRepository;
 import fr.formation.repository.LivreRepository;
 import fr.formation.repository.ReservationRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +33,8 @@ public class ReservationService {
 
     @Autowired
     private MailService mailService;
+
+    private static final Logger logger = LoggerFactory.getLogger(ReservationService.class);
 
     public Reservation ajouterReservation(String codeAdherent, String isbn) {
         // Vérifier que l'adhérent existe
@@ -122,6 +129,21 @@ public class ReservationService {
 
             // Simuler l’envoi de l’e-mail
             mailService.envoyerMail(adherent.getAdresseMail(), "Rappel de vos réservations dépassées", message.toString());
+        }
+    }
+
+    @Transactional
+    @Scheduled(cron = "0 0 2 * * *") // Exécution tous les jours à 2h du matin
+    public void supprimerReservationsExpirees() {
+        List<Reservation> reservationsExpirees = reservationRepository.findByDateFinBefore(LocalDate.now());
+
+        for (Reservation reservation : reservationsExpirees) {
+            logger.info("Suppression de la réservation expirée : {}", reservation);
+            reservationRepository.delete(reservation);
+        }
+
+        if (reservationsExpirees.isEmpty()) {
+            logger.info("Aucune réservation expirée à supprimer.");
         }
     }
 }
