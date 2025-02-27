@@ -10,6 +10,7 @@ import fr.formation.model.Reservation;
 import fr.formation.repository.AdherentRepository;
 import fr.formation.repository.LivreRepository;
 import fr.formation.repository.ReservationRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,5 +91,44 @@ public class ReservationServiceTest {
                 reservationService.ajouterReservation(adherent.getCodeAdherent(), livre.getIsbn())
         );
         assertEquals("L'adhérent a atteint le nombre maximal de réservations", exception.getMessage());
+    }
+
+    @Test
+    void testAnnulerReservation_Succes() {
+        // Given : Une réservation existante et en cours
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+
+        // When
+        reservationService.annulerReservation(reservation.getId());
+
+        // Then : Vérifier que la réservation a bien été supprimée
+        verify(reservationRepository, times(1)).delete(reservation);
+        // Vérifier que le livre est redevenu disponible
+        assertTrue(livre.isDisponible());
+    }
+
+    @Test
+    void testAnnulerReservation_ReservationInexistante() {
+        // Given : La réservation n'existe pas
+        when(reservationRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When - Then : Vérifier que l'exception est bien levée
+        Exception exception = assertThrows(EntityNotFoundException.class, () ->
+                reservationService.annulerReservation(999L)
+        );
+        assertEquals("Réservation non trouvée", exception.getMessage());
+    }
+
+    @Test
+    void testAnnulerReservation_ReservationDejaTerminee() {
+        // Given : Une réservation déjà terminée
+        reservation.setDateFin(LocalDate.now().minusDays(1)); // Date passée
+        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+
+        // When - Then
+        Exception exception = assertThrows(IllegalStateException.class, () ->
+                reservationService.annulerReservation(reservation.getId())
+        );
+        assertEquals("Impossible d'annuler une réservation déjà terminée", exception.getMessage());
     }
 }
