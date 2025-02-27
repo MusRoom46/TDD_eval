@@ -12,4 +12,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findByDateFinAfter(LocalDate date);
     List<Reservation> findByAdherentAndDateFinAfter(Adherent adherent, LocalDate date);
+    List<Reservation> findByAdherent(Adherent adherent);
 }

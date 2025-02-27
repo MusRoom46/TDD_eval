@@ -80,4 +80,13 @@ public class ReservationService {
 
         return reservationRepository.findByAdherentAndDateFinAfter(adherent, LocalDate.now());
     }
+
+    public List<Reservation> getHistoriqueReservationsAdherent(String codeAdherent) {
+        // Vérifier que l'adhérent existe
+        Adherent adherent = adherentRepository.findById(codeAdherent)
+                .orElseThrow(() -> new EntityNotFoundException("Adhérent non trouvé"));
+
+        // Retourner toutes ses réservations (passées et en cours)
+        return reservationRepository.findByAdherent(adherent);
+    }
 }
