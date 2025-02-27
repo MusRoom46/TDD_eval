@@ -35,6 +35,9 @@ public class ReservationServiceTest {
     @Mock
     private AdherentRepository adherentRepository;
 
+    @Mock
+    private MailService mailService;
+
     @InjectMocks
     private ReservationService reservationService;
 
@@ -238,7 +241,7 @@ public class ReservationServiceTest {
 
         // Then : Vérifier que l'e-mail est bien simulé
         verify(mailService, times(1)).envoyerMail(
-                eq(adherent.getEmail()),
+                eq(adherent.getAdresseMail()),
                 contains("Rappel de vos réservations dépassées"),
                 contains(livre.getTitre())
         );

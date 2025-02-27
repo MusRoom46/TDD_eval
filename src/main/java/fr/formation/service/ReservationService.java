@@ -11,7 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ReservationService {
@@ -24,6 +25,9 @@ public class ReservationService {
 
     @Autowired
     private AdherentRepository adherentRepository;
+
+    @Autowired
+    private MailService mailService;
 
     public Reservation ajouterReservation(String codeAdherent, String isbn) {
         // Vérifier que l'adhérent existe
@@ -88,5 +92,36 @@ public class ReservationService {
 
         // Retourner toutes ses réservations (passées et en cours)
         return reservationRepository.findByAdherent(adherent);
+    }
+
+    public void envoyerRappelReservationsDepassees() {
+        // Récupérer les réservations dépassées
+        List<Reservation> reservationsDepassees = reservationRepository.findByDateFinBefore(LocalDate.now());
+
+        // Regrouper les réservations par adhérent
+        Map<Adherent, List<Reservation>> reservationsParAdherent = reservationsDepassees.stream()
+                .collect(Collectors.groupingBy(Reservation::getAdherent));
+
+        // Envoyer un e-mail pour chaque adhérent
+        for (Map.Entry<Adherent, List<Reservation>> entry : reservationsParAdherent.entrySet()) {
+            Adherent adherent = entry.getKey();
+            List<Reservation> reservations = entry.getValue();
+
+            // Construire le message
+            StringBuilder message = new StringBuilder();
+            message.append("Cher(e) ").append(adherent.getPrenom()).append(",\n\n");
+            message.append("Vous avez des réservations en retard :\n");
+
+            for (Reservation reservation : reservations) {
+                message.append("- ").append(reservation.getLivre().getTitre())
+                        .append(" (fin prévue le ").append(reservation.getDateFin()).append(")\n");
+            }
+
+            message.append("\nMerci de les retourner au plus vite.\n\n");
+            message.append("Cordialement,\nBibliothèque");
+
+            // Simuler l’envoi de l’e-mail
+            mailService.envoyerMail(adherent.getAdresseMail(), "Rappel de vos réservations dépassées", message.toString());
+        }
     }
 }
