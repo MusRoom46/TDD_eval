@@ -177,4 +177,48 @@ public class ReservationServiceTest {
         );
         assertEquals("Adhérent non trouvé", exception.getMessage());
     }
+
+    @Test
+    void testGetHistoriqueReservationsAdherent() {
+        // Given : Un adhérent avec 2 réservations (1 active + 1 terminée)
+        Reservation reservationActive = new Reservation(1L, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(1));
+        Reservation reservationTerminee = new Reservation(2L, adherent, livre, LocalDate.now().minusMonths(5), LocalDate.now().minusMonths(1));
+
+        List<Reservation> reservations = List.of(reservationActive, reservationTerminee);
+
+        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
+        when(reservationRepository.findByAdherent(adherent)).thenReturn(reservations);
+
+        // When
+        List<Reservation> result = reservationService.getHistoriqueReservationsAdherent(adherent.getCodeAdherent());
+
+        // Then
+        assertFalse(result.isEmpty());
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void testGetHistoriqueReservationsAdherent_Vide() {
+        // Given : Un adhérent sans réservations
+        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
+        when(reservationRepository.findByAdherent(adherent)).thenReturn(Collections.emptyList());
+
+        // When
+        List<Reservation> result = reservationService.getHistoriqueReservationsAdherent(adherent.getCodeAdherent());
+
+        // Then
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testGetHistoriqueReservationsAdherent_Inexistant() {
+        // Given : Adhérent non trouvé
+        when(adherentRepository.findById("XYZ123")).thenReturn(Optional.empty());
+
+        // When - Then
+        Exception exception = assertThrows(EntityNotFoundException.class, () ->
+                reservationService.getHistoriqueReservationsAdherent("XYZ123")
+        );
+        assertEquals("Adhérent non trouvé", exception.getMessage());
+    }
 }
