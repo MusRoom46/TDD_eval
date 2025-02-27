@@ -6,8 +6,10 @@ import static org.mockito.Mockito.*;
 import fr.formation.model.Adherent;
 import fr.formation.model.Format;
 import fr.formation.model.Livre;
+import fr.formation.model.Reservation;
 import fr.formation.repository.AdherentRepository;
 import fr.formation.repository.LivreRepository;
+import fr.formation.repository.ReservationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,8 +67,9 @@ public class ReservationServiceTest {
     @Test
     void testAjouterReservation_LivreIndisponible() {
         // Given : Livre non disponible
-        livre.setDisponible(false);
+        when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
         when(livreRepository.findById(livre.getIsbn())).thenReturn(Optional.of(livre));
+        livre.setDisponible(false);
 
         // When - Then
         Exception exception = assertThrows(IllegalStateException.class, () ->
@@ -79,6 +82,7 @@ public class ReservationServiceTest {
     void testAjouterReservation_MaximumAtteint() {
         // Given : L'adhérent a déjà 3 réservations actives
         when(adherentRepository.findById(adherent.getCodeAdherent())).thenReturn(Optional.of(adherent));
+        when(livreRepository.findById(livre.getIsbn())).thenReturn(Optional.of(livre));
         when(reservationRepository.countByAdherentAndDateFinIsNull(adherent)).thenReturn(3);
 
         // When - Then
