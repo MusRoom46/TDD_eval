@@ -48,4 +48,23 @@ public class ReservationService {
         Reservation reservation = new Reservation(null, adherent, livre, LocalDate.now(), LocalDate.now().plusMonths(4));
         return reservationRepository.save(reservation);
     }
+
+    public void annulerReservation(Long reservationId) {
+        // Vérifier si la réservation existe
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new EntityNotFoundException("Réservation non trouvée"));
+
+        // Vérifier si la réservation est encore active
+        if (reservation.getDateFin().isBefore(LocalDate.now())) {
+            throw new IllegalStateException("Impossible d'annuler une réservation déjà terminée");
+        }
+
+        // Rendre le livre à nouveau disponible
+        Livre livre = reservation.getLivre();
+        livre.setDisponible(true);
+        livreRepository.save(livre);
+
+        // Supprimer la réservation
+        reservationRepository.delete(reservation);
+    }
 }
