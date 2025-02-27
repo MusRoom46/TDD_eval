@@ -10,6 +10,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -66,5 +67,17 @@ public class ReservationService {
 
         // Supprimer la réservation
         reservationRepository.delete(reservation);
+    }
+
+    public List<Reservation> getReservationsActives() {
+        return reservationRepository.findByDateFinAfter(LocalDate.now());
+    }
+
+    public List<Reservation> getReservationsActivesParAdherent(String codeAdherent) {
+        // Vérifier si l'adhérent existe
+        Adherent adherent = adherentRepository.findById(codeAdherent)
+                .orElseThrow(() -> new EntityNotFoundException("Adhérent non trouvé"));
+
+        return reservationRepository.findByAdherentAndDateFinAfter(adherent, LocalDate.now());
     }
 }
